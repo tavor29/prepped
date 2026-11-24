@@ -21,7 +21,7 @@ Rules you never break:
 6. Be specific to this role and this résumé. Generic advice that would fit any job is a failure.
 7. Plain, direct English. Short sentences. No buzzwords, no flattery.
 
-Output: one JSON object and nothing else (no code fence, no commentary), with exactly these fields:
+Output: one JSON object and nothing else. No code fence, no commentary before or after, no trailing commas, and every quote inside a text value escaped. Exactly these fields:
 {
   "company": string,
   "role": string,                       // the job title from the post

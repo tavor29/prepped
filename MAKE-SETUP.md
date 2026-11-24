@@ -4,48 +4,74 @@ Prepped never holds an AI key. When someone asks for a prep, the page sends the 
 
 1. checks the form and the Turnstile bot check
 2. counts the visitor's daily limit
-3. builds the complete Claude API request: the prompt (`src/lib/prompt.ts`), the model, and a JSON schema (`src/lib/schema.ts`) that makes the reply valid JSON
-4. sends that request to your Make scenario, which forwards it to the Claude API with the key stored in Make
+3. builds the prompt (`src/lib/prompt.ts`)
+4. sends it to your Make scenario
 5. checks the reply has the right shape before passing it back
+
+The webhook body has:
+
+- `instructions`: the coaching rules and the exact JSON shape to return
+- `input`: the company, the stage, the job post, the résumé and any extra material
+- `key`
+- `anthropicBody`: only for option B below
 
 Until `MAKE_WEBHOOK_URL` is set, the function returns the example prep, so the site works end to end without Make.
 
-## 1. Import the scenario
+## 1A. The Make scenario with Make's free AI Agent (recommended)
 
-1. In Make, go to **Scenarios > Create a new scenario**, click the **…** menu at the bottom, choose **Import Blueprint**, and pick `make/prepped.blueprint.json`.
-2. **Module 1, Custom webhook.** Click it and choose **Add** to create a webhook (for example "prepped"). Copy its URL: that's `MAKE_WEBHOOK_URL`.
-3. **The filter between modules 1 and 2.** Click the small filter icon on the line. Replace `REPLACE_WITH_YOUR_MAKE_WEBHOOK_KEY` with a long random string you make up. Use the same string as `MAKE_WEBHOOK_KEY` in Cloudflare. This stops anyone who finds the webhook URL from spending your Claude credits.
-4. **Module 2, HTTP "Make a request" (Claude API).** In the headers, replace `REPLACE_WITH_YOUR_ANTHROPIC_API_KEY` with your Anthropic API key, from the [Anthropic Console](https://platform.claude.com/) > API keys. Leave everything else as imported:
-   - POST to `https://api.anthropic.com/v1/messages`
-   - header `anthropic-version: 2026-10-21`
-   - body type **Raw**, content type **JSON**, request content `{{1.anthropicBody}}`
-   - **Parse response: No**
-   - timeout 300
-5. **Module 3, Webhook response.** Status `{{2.statusCode}}`, body `{{2.data}}`, header `content-type: application/json`.
-6. **Teach module 1 the data.** Click module 1 and choose **Redetermine data structure**. Then send one request from a terminal. The filter won't match this test, so nothing is sent to Claude:
+Three modules, built by hand in about 5 minutes. They use **Make's AI Provider**, so there's no API key to manage. It runs on Make credits and works on every Make plan; Make lists it as an open beta.
 
-   ```sh
-   curl -X POST "<webhook URL>" -H "content-type: application/json" -d "{\"key\":\"test\",\"anthropicBody\":\"{}\"}"
-   ```
+**Module 1: Webhooks > Custom webhook.**
 
-7. **Scenario settings** (the gear icon at the bottom):
-   - **Data is confidential** is on in the blueprint. Make then doesn't keep the résumés and job posts in its run history. Turn it off for a short while only if you need to debug a run.
-   - Save, switch the scenario **On**, and set it to run **immediately** as data arrives.
+1. Click **Add** under Webhook and name it "prepped".
+2. Under **API keys**, add a key: a long random string you make up. That's `MAKE_WEBHOOK_KEY`. Prepped sends it in the `x-make-apikey` header, and Make rejects any call without it, so a leaked webhook URL can't spend your credits.
+3. Copy the webhook URL: that's `MAKE_WEBHOOK_URL`.
+4. Click **Redetermine data structure**, then send one sample so Make learns the fields:
 
-**Spend.** Set a monthly spend limit in the Anthropic Console. Each prep is one Claude call, on Claude Sonnet 5.5 by default.
+```sh
+curl -X POST "<webhook URL>" -H "content-type: application/json" -H "x-make-apikey: <your key>" -d "{\"key\":\"x\",\"instructions\":\"x\",\"input\":\"x\",\"anthropicBody\":\"x\"}"
+```
 
-**Model.** To use a different model, set `MODEL` in Cloudflare, for example `claude-opus-5-5`: stronger, but slower and pricier. Nothing in Make needs to change.
+**Module 2: Make AI Agent (New) > Run an agent.**
 
-**Speed.** The function asks for medium effort so a prep normally finishes in about a minute, well within Make's wait for the webhook response.
+| Field | Set it to |
+| --- | --- |
+| Connection | **Make's AI Provider** |
+| Model | the most capable model on offer. Prep quality depends on it. |
+| Instructions | map `instructions` from module 1 |
+| Input | map `input` from module 1 |
+| Conversation ID | **leave empty**. Every run is a fresh conversation, so one candidate's résumé never carries into another's prep. |
+| Response format | **Text** |
+| Maximum output length | 100% (the prep is long; less cuts it off) |
+| Step timeout | 600 |
+| Knowledge, tools, MCP | none |
 
-### Using Make's built-in Claude module instead of HTTP
+**Module 3: Webhooks > Webhook response.**
 
-If you'd rather use Make's Anthropic Claude module (a Make connection instead of a pasted key):
+- **Status:** `200`.
+- **Body:** map only the agent's **Response**, with nothing around it. The response is itself the JSON prep. Don't wrap it in `{"response": "..."}` typed by hand, because quotes inside the text would break it.
+- **Custom headers** (under Advanced settings): `content-type` = `application/json`.
 
-- Map the system prompt and the user message from the decoded body. Add a **JSON > Parse JSON** module on `{{1.anthropicBody}}` first, then map its `system` and `messages[1].content`.
-- Set max tokens to 16000.
-- In the Webhook response, return `{"result": <the module's text output>}` and wrap it with a **JSON > Create JSON** module, so quotes and line breaks are escaped.
-- The function accepts that form too. It loses the schema guarantee, though, so the HTTP route above is more reliable.
+**Scenario settings** (the gear icon at the bottom):
+
+- Turn on **Data is confidential**, so Make doesn't keep the résumés and job posts in its run history. Turn it off for a short while only if you need to debug a run.
+- Save, switch the scenario **On**, and set it to **Immediately as data arrives**.
+
+**If preps come back incomplete or the page says the reply couldn't be read:** the model on offer may be struggling with the long JSON. Pick a larger model in module 2, or use option B.
+
+## 1B. The alternative: the Claude API directly (import a blueprint)
+
+Use this for stronger, guaranteed-valid output: the request carries a JSON schema the API enforces. It needs an Anthropic API key, which you paste into Make; it never goes into the app or the repo.
+
+1. In Make, go to **Scenarios > Create a new scenario**, open the **…** menu at the bottom, choose **Import Blueprint**, and pick `make/prepped.blueprint.json`.
+2. **Module 1:** click **Add** to create the webhook, and copy its URL.
+3. **The filter on the line between modules 1 and 2:** replace `REPLACE_WITH_YOUR_MAKE_WEBHOOK_KEY` with your `MAKE_WEBHOOK_KEY`. Or delete the filter and set an API key on the webhook as in 1A.
+4. **Module 2 (HTTP):** replace `REPLACE_WITH_YOUR_ANTHROPIC_API_KEY` with your key from the [Anthropic Console](https://platform.claude.com/). It posts `{{1.anthropicBody}}` raw to `https://api.anthropic.com/v1/messages` with `anthropic-version: 2026-10-21`, and Parse response is off.
+5. **Module 3:** status `{{2.statusCode}}`, body `{{2.data}}`.
+6. Redetermine the webhook's data structure, turn on Data is confidential, and switch the scenario on.
+7. **Model and spend:**
+   - It runs on Claude Sonnet 5.5 at medium effort. Set `MODEL` in Cloudflare to change the model, for example `claude-opus-5-5`.
+   - Set a monthly spend limit in the Anthropic Console.
 
 ## 2. Cloudflare Pages
 
@@ -59,10 +85,10 @@ If you'd rather use Make's Anthropic Claude module (a Make connection instead of
 | Name | Type | Value |
 | --- | --- | --- |
 | `MAKE_WEBHOOK_URL` | Secret | the Make webhook URL |
-| `MAKE_WEBHOOK_KEY` | Secret | the same random string as in the Make filter |
+| `MAKE_WEBHOOK_KEY` | Secret | the webhook's API key (1A) or the filter's string (1B) |
 | `TURNSTILE_SECRET` | Secret | Turnstile secret key |
 | `PUBLIC_TURNSTILE_SITE_KEY` | Variable | Turnstile site key (read at build time, so redeploy after setting it) |
-| `MODEL` | Variable | optional, default `claude-sonnet-5-5` |
+| `MODEL` | Variable | option 1B only, default `claude-sonnet-5-5` |
 | `LIMIT_PER_VISITOR` | Variable | optional, default 3 |
 | `LIMIT_TOTAL` | Variable | optional, default 100 |
 
@@ -78,6 +104,7 @@ If you'd rather use Make's Anthropic Claude module (a Make connection instead of
   - "The AI declined this one": a refusal
   - "The prep came out too long and was cut off": the reply hit its length limit
   - "The AI service had a problem": anything else from the API
+  - "The AI’s reply couldn’t be read" or "was incomplete": with option 1A, the agent didn’t return clean JSON in the full shape; try a larger model
 - For the details, look at the scenario's run in Make, with "Data is confidential" turned off briefly.
 
 ## Local development

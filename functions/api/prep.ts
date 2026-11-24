@@ -4,10 +4,14 @@
 // request (prompt, model, JSON schema), and checks the reply's shape before it
 // reaches the page. It stores and logs nothing from the résumé or job post.
 //
-// The scenario (make/prepped.blueprint.json) only forwards: it posts
-// `anthropicBody` as is to the Claude API with the key held in Make, and returns
-// the API's response unchanged. Building the body here means Make never has to
-// escape the résumé's quotes or line breaks, and the prompt stays in git.
+// The webhook body carries the prompt two ways, so either scenario works:
+//   instructions + input  for Make's AI Agent module (Make's AI Provider, no
+//                         key): map them into Instructions and Input, and return
+//                         the agent's Response as the webhook body
+//   anthropicBody         a complete Claude API request, for the HTTP scenario
+//                         (make/prepped.blueprint.json) that forwards it as is
+// The key goes in the `x-make-apikey` header (the webhook's own API key check)
+// and in the body as `key` (for a filter). See MAKE-SETUP.md.
 //
 // Settings (Cloudflare Pages > Settings > Variables and secrets):
 //   MAKE_WEBHOOK_URL   secret  the scenario's custom webhook URL
@@ -126,8 +130,13 @@ export const onRequestPost = async ({ request, env }: Ctx) => {
 	try {
 		reply = await fetch(env.MAKE_WEBHOOK_URL, {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ key: env.MAKE_WEBHOOK_KEY ?? '', anthropicBody: JSON.stringify(anthropicBody) }),
+			headers: { 'content-type': 'application/json', ...(env.MAKE_WEBHOOK_KEY ? { 'x-make-apikey': env.MAKE_WEBHOOK_KEY } : {}) },
+			body: JSON.stringify({
+				key: env.MAKE_WEBHOOK_KEY ?? '',
+				instructions: system,
+				input: user(req),
+				anthropicBody: JSON.stringify(anthropicBody),
+			}),
 		});
 	} catch {
 		return fail(502, 'Couldn’t reach the AI service. Please try again in a minute.');
@@ -157,10 +166,10 @@ export const onRequestPost = async ({ request, env }: Ctx) => {
 		} catch {
 			return fail(502, 'The AI’s reply couldn’t be read. Please try again.');
 		}
-	} else if (!isPrep(outer) && typeof outer.result === 'string') {
-		// A Make AI module's text, wrapped as {"result": "..."}.
+	} else if (!isPrep(outer) && (typeof outer.response === 'string' || typeof outer.result === 'string')) {
+		// A Make AI module's text, wrapped as {"response": "..."} or {"result": "..."}.
 		try {
-			prep = extractJson(outer.result);
+			prep = extractJson(outer.response ?? outer.result);
 		} catch {
 			return fail(502, 'The AI’s reply couldn’t be read. Please try again.');
 		}
