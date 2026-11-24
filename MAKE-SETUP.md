@@ -4,47 +4,48 @@ Prepped never holds an AI key. When someone asks for a prep, the page sends the 
 
 1. checks the form and the Turnstile bot check
 2. counts the visitor's daily limit
-3. builds the prompt (`src/lib/prompt.ts`)
-4. sends it to your Make scenario
+3. builds the complete Claude API request: the prompt (`src/lib/prompt.ts`), the model, and a JSON schema (`src/lib/schema.ts`) that makes the reply valid JSON
+4. sends that request to your Make scenario, which forwards it to the Claude API with the key stored in Make
 5. checks the reply has the right shape before passing it back
 
 Until `MAKE_WEBHOOK_URL` is set, the function returns the example prep, so the site works end to end without Make.
 
-## 1. The Make scenario (three modules)
+## 1. Import the scenario
 
-**Module 1: Webhooks > Custom webhook.** Create a new webhook and copy its URL.
+1. In Make, go to **Scenarios > Create a new scenario**, click the **…** menu at the bottom, choose **Import Blueprint**, and pick `make/prepped.blueprint.json`.
+2. **Module 1, Custom webhook.** Click it and choose **Add** to create a webhook (for example "prepped"). Copy its URL: that's `MAKE_WEBHOOK_URL`.
+3. **The filter between modules 1 and 2.** Click the small filter icon on the line. Replace `REPLACE_WITH_YOUR_MAKE_WEBHOOK_KEY` with a long random string you make up. Use the same string as `MAKE_WEBHOOK_KEY` in Cloudflare. This stops anyone who finds the webhook URL from spending your Claude credits.
+4. **Module 2, HTTP "Make a request" (Claude API).** In the headers, replace `REPLACE_WITH_YOUR_ANTHROPIC_API_KEY` with your Anthropic API key, from the [Anthropic Console](https://platform.claude.com/) > API keys. Leave everything else as imported:
+   - POST to `https://api.anthropic.com/v1/messages`
+   - header `anthropic-version: 2026-10-21`
+   - body type **Raw**, content type **JSON**, request content `{{1.anthropicBody}}`
+   - **Parse response: No**
+   - timeout 300
+5. **Module 3, Webhook response.** Status `{{2.statusCode}}`, body `{{2.data}}`, header `content-type: application/json`.
+6. **Teach module 1 the data.** Click module 1 and choose **Redetermine data structure**. Then send one request from a terminal. The filter won't match this test, so nothing is sent to Claude:
 
-The function sends this JSON body:
+   ```sh
+   curl -X POST "<webhook URL>" -H "content-type: application/json" -d "{\"key\":\"test\",\"anthropicBody\":\"{}\"}"
+   ```
 
-```json
-{ "key": "<MAKE_WEBHOOK_KEY>", "system": "<the instructions>", "user": "<the job post and résumé>" }
-```
+7. **Scenario settings** (the gear icon at the bottom):
+   - **Data is confidential** is on in the blueprint. Make then doesn't keep the résumés and job posts in its run history. Turn it off for a short while only if you need to debug a run.
+   - Save, switch the scenario **On**, and set it to run **immediately** as data arrives.
 
-To let Make learn the structure, click "Redetermine data structure" and send it one test request, for example from a terminal:
+**Spend.** Set a monthly spend limit in the Anthropic Console. Each prep is one Claude call, on Claude Sonnet 5.5 by default.
 
-```sh
-curl -X POST "<webhook URL>" -H "content-type: application/json" -d "{\"key\":\"test\",\"system\":\"s\",\"user\":\"u\"}"
-```
+**Model.** To use a different model, set `MODEL` in Cloudflare, for example `claude-opus-5-5`: stronger, but slower and pricier. Nothing in Make needs to change.
 
-**Filter between modules 1 and 2.** Allow the run only when `key` equals your secret (the same value you set as `MAKE_WEBHOOK_KEY` in Cloudflare). This stops anyone who finds the webhook URL from spending your Make operations.
+**Speed.** The function asks for medium effort so a prep normally finishes in about a minute, well within Make's wait for the webhook response.
 
-**Module 2: the AI.** Use the Anthropic Claude module (or another AI module you prefer). Settings:
+### Using Make's built-in Claude module instead of HTTP
 
-- Model: a Claude Sonnet model
-- System prompt: map `system`
-- Message (role user): map `user`
-- Max tokens: 8000. The prep is long; too low a limit cuts the JSON short, and the function rejects it.
-- Temperature: around 0.4, if the module offers it
+If you'd rather use Make's Anthropic Claude module (a Make connection instead of a pasted key):
 
-**Module 3: Webhooks > Webhook response.**
-
-- Status: `200`
-- Body: map the AI module's text output, with nothing else around it
-- Custom header: `content-type: application/json`
-
-The function also accepts the text wrapped in a field called `result` (`{"result": "<text>"}`) if that's easier to map.
-
-**Scheduling.** Turn the scenario on and set it to run immediately as data arrives. Make waits only a limited time for the Webhook response (a few minutes). A prep normally takes 30–90 seconds.
+- Map the system prompt and the user message from the decoded body. Add a **JSON > Parse JSON** module on `{{1.anthropicBody}}` first, then map its `system` and `messages[1].content`.
+- Set max tokens to 16000.
+- In the Webhook response, return `{"result": <the module's text output>}` and wrap it with a **JSON > Create JSON** module, so quotes and line breaks are escaped.
+- The function accepts that form too. It loses the schema guarantee, though, so the HTTP route above is more reliable.
 
 ## 2. Cloudflare Pages
 
@@ -58,21 +59,26 @@ The function also accepts the text wrapped in a field called `result` (`{"result
 | Name | Type | Value |
 | --- | --- | --- |
 | `MAKE_WEBHOOK_URL` | Secret | the Make webhook URL |
-| `MAKE_WEBHOOK_KEY` | Secret | a long random string, the same one as in the Make filter |
+| `MAKE_WEBHOOK_KEY` | Secret | the same random string as in the Make filter |
 | `TURNSTILE_SECRET` | Secret | Turnstile secret key |
 | `PUBLIC_TURNSTILE_SITE_KEY` | Variable | Turnstile site key (read at build time, so redeploy after setting it) |
+| `MODEL` | Variable | optional, default `claude-sonnet-5-5` |
 | `LIMIT_PER_VISITOR` | Variable | optional, default 3 |
 | `LIMIT_TOTAL` | Variable | optional, default 100 |
 
 4. **Daily limits.** Create a KV namespace (Workers & Pages > KV), for example `prepped-rate`. Then bind it to the Pages project as `RATE` under Settings > Bindings. Without `RATE` there are no daily limits.
-5. **Turnstile.** In Cloudflare > Turnstile, add the Pages hostname (for example `prepped.pages.dev`) to a widget. You can use the existing widget or create a new one.
+5. **Turnstile.** In Cloudflare > Turnstile, add the Pages hostname (for example `prepped.pages.dev`) to a widget.
 6. Redeploy.
 
 ## 3. Check it
 
-- Open the site and use **See an example** to check the page layout.
-- Build a prep with a real job post and résumé. If it fails, the page shows the reason, and the Make scenario's history shows what the AI returned.
-- **"The AI's reply was incomplete":** the JSON was cut off (raise max tokens) or a field was missing.
+- Build a prep with a real job post and résumé.
+- If it fails, the page shows the reason in plain words:
+  - "The AI is busy right now": rate limits
+  - "The AI declined this one": a refusal
+  - "The prep came out too long and was cut off": the reply hit its length limit
+  - "The AI service had a problem": anything else from the API
+- For the details, look at the scenario's run in Make, with "Data is confidential" turned off briefly.
 
 ## Local development
 

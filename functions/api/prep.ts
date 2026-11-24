@@ -1,8 +1,13 @@
 // POST /api/prep: a Cloudflare Pages Function between the page and the
 // Make.com scenario that runs the AI. It keeps the webhook URL secret, checks
-// the Turnstile token, enforces daily limits, builds the prompt, and checks the
-// reply's shape before it reaches the page. It stores and logs nothing from the
-// résumé or the job post.
+// the Turnstile token, enforces daily limits, builds the complete Claude API
+// request (prompt, model, JSON schema), and checks the reply's shape before it
+// reaches the page. It stores and logs nothing from the résumé or job post.
+//
+// The scenario (make/prepped.blueprint.json) only forwards: it posts
+// `anthropicBody` as is to the Claude API with the key held in Make, and returns
+// the API's response unchanged. Building the body here means Make never has to
+// escape the résumé's quotes or line breaks, and the prompt stays in git.
 //
 // Settings (Cloudflare Pages > Settings > Variables and secrets):
 //   MAKE_WEBHOOK_URL   secret  the scenario's custom webhook URL
@@ -11,9 +16,11 @@
 //   RATE               KV namespace binding for the daily limits (optional)
 //   LIMIT_PER_VISITOR  preps per visitor per day (default 3)
 //   LIMIT_TOTAL        preps per day across the site (default 100)
+//   MODEL              Claude model id (default claude-sonnet-5-5)
 // Without MAKE_WEBHOOK_URL it returns the example prep, marked `demo: true`.
 import { isPrep, extractJson, LIMITS, type PrepRequest, type Stage } from '../../src/lib/prep';
 import { system, user } from '../../src/lib/prompt';
+import { prepSchema } from '../../src/lib/schema';
 import { example } from '../../src/data/example';
 
 interface KV {
@@ -27,6 +34,7 @@ interface Env {
 	RATE?: KV;
 	LIMIT_PER_VISITOR?: string;
 	LIMIT_TOTAL?: string;
+	MODEL?: string;
 }
 type Ctx = { request: Request; env: Env };
 
@@ -104,26 +112,58 @@ export const onRequestPost = async ({ request, env }: Ctx) => {
 	if (limited) return fail(429, limited);
 
 	const req: PrepRequest = { company, jobDescription, resume, extra: extra || undefined, stage };
+	// A complete Messages API request. Structured output makes the reply valid
+	// JSON in the Prep shape; medium effort keeps a prep well inside Make's wait.
+	const anthropicBody = {
+		model: env.MODEL || 'claude-sonnet-5-5',
+		max_tokens: 16000,
+		system,
+		messages: [{ role: 'user', content: user(req) }],
+		output_config: { effort: 'medium', format: { type: 'json_schema', schema: prepSchema } },
+	};
+
 	let reply: Response;
 	try {
 		reply = await fetch(env.MAKE_WEBHOOK_URL, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ key: env.MAKE_WEBHOOK_KEY ?? '', system, user: user(req) }),
+			body: JSON.stringify({ key: env.MAKE_WEBHOOK_KEY ?? '', anthropicBody: JSON.stringify(anthropicBody) }),
 		});
 	} catch {
 		return fail(502, 'Couldn’t reach the AI service. Please try again in a minute.');
 	}
-	if (!reply.ok) return fail(502, 'The AI service had a problem. Please try again in a minute.');
 
 	const text = await reply.text();
-	let prep: unknown;
+	let outer: Record<string, any>;
 	try {
-		// Make may return the model's text, or JSON with the text inside it.
-		const outer = extractJson(text) as Record<string, unknown>;
-		prep = isPrep(outer) ? outer : typeof outer.result === 'string' ? extractJson(outer.result) : outer;
+		outer = extractJson(text) as Record<string, any>;
 	} catch {
-		return fail(502, 'The AI’s reply couldn’t be read. Please try again.');
+		return fail(502, reply.ok ? 'The AI’s reply couldn’t be read. Please try again.' : 'The AI service had a problem. Please try again in a minute.');
+	}
+
+	let prep: unknown = outer;
+	if (outer.type === 'error') {
+		const kind = outer.error?.type;
+		if (kind === 'rate_limit_error' || kind === 'overloaded_error') return fail(503, 'The AI is busy right now. Please try again in a minute.');
+		return fail(502, 'The AI service had a problem. Please try again in a minute.');
+	}
+	if (Array.isArray(outer.content)) {
+		// The Claude API's own response, passed through by Make.
+		if (outer.stop_reason === 'refusal') return fail(422, 'The AI declined this one. Check the job post and résumé text, then try again.');
+		if (outer.stop_reason === 'max_tokens') return fail(502, 'The prep came out too long and was cut off. Please try again.');
+		const textBlock = outer.content.find((b: { type?: string }) => b.type === 'text');
+		try {
+			prep = textBlock ? extractJson(textBlock.text) : null;
+		} catch {
+			return fail(502, 'The AI’s reply couldn’t be read. Please try again.');
+		}
+	} else if (!isPrep(outer) && typeof outer.result === 'string') {
+		// A Make AI module's text, wrapped as {"result": "..."}.
+		try {
+			prep = extractJson(outer.result);
+		} catch {
+			return fail(502, 'The AI’s reply couldn’t be read. Please try again.');
+		}
 	}
 	if (!isPrep(prep)) return fail(502, 'The AI’s reply was incomplete. Please try again.');
 	return json({ prep });
