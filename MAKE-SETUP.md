@@ -21,6 +21,17 @@ Until `MAKE_WEBHOOK_URL` is set, the function returns the example prep, so the s
 
 Three modules, built by hand in about 5 minutes. They use **Make's AI Provider**, so there's no API key to manage. It runs on Make credits and works on every Make plan; Make lists it as an open beta.
 
+**Shortcut: import `make/prepped-agent.blueprint.json`.** In Make, go to Scenarios > Create a new scenario, open the **…** menu, choose **Import Blueprint**, and pick the file. It contains:
+
+- module 1, the webhook, which already knows the fields
+- the Webhook response, already set up
+- the confidential setting
+- notes on both modules
+
+Then click the **+** between the two modules and add **Make AI Agent (New) > Run an agent**, set as in the table below. It becomes module 3, which the response body (`{{3.response}}`) already points to. Check the body shows the agent's Response pill. If it doesn't, map it again.
+
+After it works, export it (… > Export Blueprint) and add it to `make/` to replace this file, so the next import is complete.
+
 **Module 1: Webhooks > Custom webhook.**
 
 1. Click **Add** under Webhook and name it "prepped".

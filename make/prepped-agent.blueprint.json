@@ -1,0 +1,82 @@
+{
+	"name": "Prepped: interview prep (Make AI Agent)",
+	"flow": [
+		{
+			"id": 1,
+			"module": "gateway:CustomWebHook",
+			"version": 1,
+			"parameters": {
+				"hook": null,
+				"maxResults": 1
+			},
+			"mapper": {},
+			"metadata": {
+				"designer": { "x": 0, "y": 0, "name": "Prepped request" },
+				"restore": {},
+				"parameters": [
+					{ "name": "hook", "type": "hook:gateway-webhook", "label": "Webhook", "required": true },
+					{ "name": "maxResults", "type": "number", "label": "Maximum number of results" }
+				],
+				"interface": [
+					{ "name": "key", "type": "text" },
+					{ "name": "instructions", "type": "text" },
+					{ "name": "input", "type": "text" },
+					{ "name": "anthropicBody", "type": "text" }
+				]
+			}
+		},
+		{
+			"id": 2,
+			"module": "gateway:WebhookRespond",
+			"version": 1,
+			"parameters": {},
+			"mapper": {
+				"status": "200",
+				"body": "{{3.response}}",
+				"headers": [
+					{ "key": "content-type", "value": "application/json" }
+				]
+			},
+			"metadata": {
+				"designer": { "x": 600, "y": 0, "name": "Send the prep back" },
+				"restore": {
+					"expect": {
+						"headers": { "mode": "chose", "items": [null] }
+					}
+				}
+			}
+		}
+	],
+	"metadata": {
+		"instant": true,
+		"version": 1,
+		"scenario": {
+			"roundtrips": 1,
+			"maxErrors": 3,
+			"autoCommit": true,
+			"autoCommitTriggerLast": true,
+			"sequential": false,
+			"confidential": true,
+			"dataloss": false,
+			"dlq": false,
+			"freshVariables": false
+		},
+		"designer": {
+			"orphans": [],
+			"notes": [
+				{
+					"moduleIds": [1],
+					"content": "Add an API key on this webhook (a long random string). Prepped sends it as x-make-apikey. Copy the webhook URL into Cloudflare as MAKE_WEBHOOK_URL and the key as MAKE_WEBHOOK_KEY.",
+					"isFilterNote": false,
+					"metadata": { "color": "#9138FE" }
+				},
+				{
+					"moduleIds": [2],
+					"content": "Insert Make AI Agent (New) > Run an agent BEFORE this module (it becomes module 3). Connection: Make's AI Provider. Instructions: {{1.instructions}}. Input: {{1.input}}. Conversation ID: empty. Response format: Text. Maximum output length: 100%. Step timeout: 600. Then check this Body shows the agent's Response, alone.",
+					"isFilterNote": false,
+					"metadata": { "color": "#9138FE" }
+				}
+			]
+		}
+	}
+}
