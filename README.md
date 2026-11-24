@@ -1,18 +1,33 @@
-# Your Call
+# Prepped
 
-A project management judgment game. It has 50 situations from tech companies and startups, written in the style of the PMP exam. Each round is up to ten questions, ordered from easy to hard. For each one you pick what you'd do, then see the best answer and why.
+Interview prep for one specific role. You paste the job post, add the company and the résumé you sent, and get:
 
-- **Questions:** `src/data/questions.ts`. The mix follows the 2026 PMP exam outline: People 17, Process 20, Business environment 13. The build fails if the counts are off, if an id repeats, or if a right answer is the longest option.
-- **Cartoons:** `src/components/Scene.astro`, one per question and keyed by the question's `id`. They're built from `scene/Person.astro` and `scene/Prop.astro`.
-- **Game logic:** `src/scripts/game.ts`. Progress is saved in the browser's `localStorage` only.
-- **Look:** the design tokens are copied from the portfolio site (`src/styles/tokens.css`). Keep them in sync with the site.
+- what they're really hiring for
+- your fit, requirement by requirement
+- your gaps and how to answer them
+- a "tell me about yourself" pitch
+- 12–15 likely questions, with answer outlines built from your own résumé
+- a story bank and questions to ask them
+- five practice situations written for that role
+
+**Practice** is *Your Call*: 50 PMP-style project management situations, each with its own cartoon.
+
+- **Prep page:** `src/pages/index.astro` and `src/scripts/prep.ts`. The résumé PDF is read in the browser with pdf.js.
+- **Prep shape:** `src/lib/prep.ts`
+- **Prompt:** `src/lib/prompt.ts`
+- **Renderer:** `src/scripts/render.ts`
+- **Server function:** `functions/api/prep.ts`, a Cloudflare Pages Function that forwards to a Make.com scenario running the AI. No AI key lives in this repo. To connect it, see **MAKE-SETUP.md**.
+- **Example:** `src/data/example.ts`. The candidate and company are fictional. It's shown at `/example/`, and it's what the function returns until Make is connected.
+- **Practice:** `src/pages/practice/`
+  - questions: `src/data/questions.ts` (People 17 / Process 20 / Business environment 13, matching the 2026 PMP outline)
+  - cartoons: `src/components/Scene.astro`
+  - game logic: `src/scripts/game.ts`
+- **Look:** the tokens are copied from the portfolio site (`src/styles/tokens.css`). Keep them in sync.
 
 ## Run
 
 ```sh
 npm install
-npm run dev      # http://localhost:4321
-npm run build    # static site in dist/
+npm run build
+npm run serve    # http://127.0.0.1:4410 with the server function
 ```
-
-The site is served at `/` by default. Set `BASE=/pm-quiz/` when building for a GitHub Pages project site.

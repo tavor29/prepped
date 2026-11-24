@@ -1,5 +1,5 @@
 {
-  "name": "your-call",
+  "name": "prepped",
   "type": "module",
   "version": "1.0.0",
   "private": true,
@@ -10,13 +10,16 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "serve": "wrangler pages dev dist --port 4410 --ip 127.0.0.1"
   },
   "dependencies": {
-    "astro": "^7.3.3"
+    "astro": "^7.3.3",
+    "pdfjs-dist": "^6.5.438"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "wrangler": "^4.167.0"
   }
 }

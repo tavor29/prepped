@@ -1,0 +1,35 @@
+---
+// A finished prep for a fictional candidate and company (data/example.ts),
+// rendered at build time with the same renderer as a real one, so visitors can
+// see the result without uploading anything.
+import Layout from '../../layouts/Layout.astro';
+import Container from '../../components/Container.astro';
+import { example, exampleInputs } from '../../data/example';
+import { renderPrep } from '../../scripts/render';
+
+const base = import.meta.env.BASE_URL;
+const note = `Example: a fictional candidate and company. Inputs were a job post for ${exampleInputs.role} at ${exampleInputs.company} and a one-page résumé. ${exampleInputs.resumeNote} <a href="${base}" class="link">Make one for your own interview</a>.`;
+const html = renderPrep(example, { stage: exampleInputs.stage, note });
+---
+
+<Layout
+	page="example"
+	title="Example prep: Technical Program Manager at Tidewell · Prepped"
+	description="See what Prepped makes: a full interview prep for one specific role, built from a job post and a résumé."
+>
+	<main>
+		<Container class="py-stack md:py-title">
+			<div data-example set:html={html} />
+		</Container>
+	</main>
+	<script type="application/json" id="example-data" set:html={JSON.stringify(example)} />
+</Layout>
+
+<script>
+	import { wirePrep } from '../../scripts/render';
+	import type { Prep } from '../../lib/prep';
+
+	const root = document.querySelector<HTMLElement>('[data-example]')!;
+	const prep = JSON.parse(document.getElementById('example-data')!.textContent!) as Prep;
+	wirePrep(root, prep);
+</script>

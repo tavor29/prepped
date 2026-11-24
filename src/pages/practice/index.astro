@@ -1,0 +1,182 @@
+---
+// Practice: Your Call, the PM judgment game. Three screens toggled by
+// scripts/game.ts: start (pick a domain, see progress), a round of up to ten
+// questions (easy to hard), and the round's score. Every question is
+// pre-rendered in a <template>, cartoon included, and cloned in when drawn.
+import Layout from '../../layouts/Layout.astro';
+import Container from '../../components/Container.astro';
+import Label from '../../components/Label.astro';
+import Icon from '../../components/Icon.astro';
+import Scene from '../../components/Scene.astro';
+import { questions, domains } from '../../data/questions';
+
+const letters = ['A', 'B', 'C', 'D'];
+const site = 'https://tavorbenshahar.com/';
+const booking = 'https://calendar.app.google/7pWQKCqEaaHwPvpG9';
+const marks = { People: 'half', Process: 'quarter', 'Business environment': 'leaf' } as const;
+const total = questions.length;
+const perDomain = domains.map((d) => ({ name: d, mark: marks[d], count: questions.filter((q) => q.domain === d).length }));
+---
+
+<Layout
+	page="practice"
+	title="Practice: Your Call, a project management judgment game"
+	description={`${total} project management situations from tech companies and startups, in the style of the PMP exam. Ten a round, easy to hard, with the best answer and why.`}
+>
+	<main>
+		<Container class="py-stack md:py-title">
+			{/* ---------- Start ---------- */}
+			<section data-screen="start" class="flex flex-col gap-title">
+				<div class="flex flex-col gap-gutter">
+					<Label class="text-ink-muted">A project management judgment game</Label>
+					<h1 class="font-display text-3xl leading-display tracking-display">Your call.</h1>
+					<p class="max-w-2xl text-lg text-ink-muted">
+						{total} real-world situations from tech companies and startups, written in the style of the PMP exam. Ten a round, from easy
+						to hard. Pick what you’d do, then see the best answer and why.
+					</p>
+				</div>
+
+				<div class="flex flex-col gap-gutter">
+					<p id="domain-label" class="font-label text-xs uppercase tracking-label text-ink-muted">Play from</p>
+					<div role="group" aria-labelledby="domain-label" class="flex flex-wrap gap-tight">
+						<button type="button" data-domain="all" aria-pressed="true" class="pill">All {total}</button>
+						{
+							perDomain.map((d) => (
+								<button type="button" data-domain={d.name} aria-pressed="false" class="pill">
+									<Icon name={d.mark} size="sm" tone="mark" />
+									{d.name}
+								</button>
+							))
+						}
+					</div>
+					<div class="flex flex-wrap items-center gap-gutter pt-tight">
+						<button type="button" data-start class="btn">Start a round</button>
+						<p data-start-note class="m-0 text-sm text-ink-muted"></p>
+					</div>
+				</div>
+
+				<div class="flex flex-col gap-gutter">
+					<div class="flex flex-wrap items-baseline justify-between gap-gutter">
+						<Label class="text-ink-muted">Your progress</Label>
+						<button type="button" data-reset class="link text-sm" hidden>Reset progress</button>
+					</div>
+					<ul class="grid gap-gutter md:grid-cols-3">
+						{
+							perDomain.map((d) => (
+								<li data-progress={d.name} class="flex flex-col gap-tight rounded-md border border-ink-rule p-gutter">
+									<p class="flex items-center gap-tight font-semibold">
+										<Icon name={d.mark} size="sm" tone="mark" />
+										{d.name}
+									</p>
+									<div class="bar" aria-hidden="true">
+										<span data-bar style={`--mark: var(--mark-${d.mark})`} />
+									</div>
+									<p data-progress-text class="text-sm text-ink-muted">
+										0 of {d.count} played
+									</p>
+								</li>
+							))
+						}
+					</ul>
+					<p class="max-w-3xl text-sm text-ink-muted">
+						The questions are original, not taken from the exam. The mix follows the 2026 PMP exam outline: People 33%, Process 41%,
+						Business environment 26%. Your progress stays in this browser only.
+					</p>
+				</div>
+			</section>
+
+			{/* ---------- A round ---------- */}
+			<section data-screen="round" hidden class="flex flex-col gap-gutter">
+				<div class="flex items-center gap-gutter">
+					<div class="bar grow" aria-hidden="true"><span data-round-bar style="--mark: var(--color-ink)"></span></div>
+					<Label data-round-count class="shrink-0 text-ink-muted" />
+				</div>
+				<div data-stage class="rounded-md border border-ink-rule p-gutter md:p-stack"></div>
+			</section>
+
+			{/* ---------- Round score ---------- */}
+			<section data-screen="end" hidden class="flex flex-col gap-stack">
+				<div class="flex flex-col gap-tight">
+					<Label class="text-ink-muted">Round score</Label>
+					<h2 tabindex="-1" class="font-display text-3xl leading-display tracking-display outline-none">
+						<span data-score></span> of <span data-total></span>
+					</h2>
+					<p data-end-line class="max-w-2xl text-lg text-ink-muted"></p>
+				</div>
+				<ol data-review class="flex flex-col"></ol>
+				<div class="flex flex-wrap items-center gap-gutter">
+					<button type="button" data-next-round class="btn">Next round</button>
+					<button type="button" data-back class="link text-sm">Back to start</button>
+				</div>
+				<aside class="flex flex-col gap-tight rounded-md bg-wash-half p-gutter md:flex-row md:items-center md:justify-between md:p-stack">
+					<div class="flex flex-col gap-tight">
+						<p class="font-display text-xl leading-title tracking-display">Made by a PM who makes these calls for real.</p>
+						<p class="text-base text-ink-muted">
+							I’m Tavor Ben-Shahar, a program and project manager. If your project needs someone to make them, let’s talk.
+						</p>
+					</div>
+					<div class="flex shrink-0 flex-wrap items-center gap-gutter">
+						<a href={booking} target="_blank" rel="noopener" class="btn">Book a 20-min call</a>
+						<a href={site} class="link text-sm">See my work</a>
+					</div>
+				</aside>
+			</section>
+
+			<noscript>
+				<p class="mt-gutter text-sm text-ink-muted">Turn on JavaScript to play.</p>
+			</noscript>
+		</Container>
+	</main>
+
+	{/* Every question, ready to clone into the stage. */}
+	{
+		questions.map((q) => (
+			<template data-q={q.id} data-domain={q.domain} data-level={q.level} data-topic={q.topic} data-answer={q.answer}>
+				<div class="flex flex-col gap-gutter">
+					<div class="grid items-center gap-gutter md:grid-cols-2 md:gap-stack">
+						<div class="order-2 flex flex-col gap-gutter md:order-1">
+							<Label class="flex items-center gap-tight text-ink-muted">
+								<Icon name={marks[q.domain]} size="sm" tone="mark" />
+								{q.domain} · {q.topic} · {q.level}
+							</Label>
+							<h2 tabindex="-1" class="font-display text-xl leading-title tracking-display outline-none">
+								{q.situation}
+							</h2>
+						</div>
+						<Scene id={q.id} alt={q.alt} class="order-1 block aspect-[16/9] h-auto w-full rounded-sm md:order-2" />
+					</div>
+					<ul class="grid gap-tight md:grid-cols-2">
+						{q.options.map((o, j) => (
+							<li>
+								<button type="button" data-option={j} class="option">
+									<Label class="shrink-0 pt-1 text-ink-muted">{letters[j]}</Label>
+									<span class="grow">{o}</span>
+									<span data-mark="right" hidden class="shrink-0 pt-1">
+										<Icon name="leaf" size="sm" tone="mark" />
+									</span>
+									<span data-mark="wrong" hidden class="shrink-0 pt-1">
+										<Icon name="quarter" size="sm" tone="mark" />
+									</span>
+								</button>
+							</li>
+						))}
+					</ul>
+					<div data-feedback hidden tabindex="-1" aria-live="polite" class="flex flex-col items-start gap-tight outline-none">
+						<p data-verdict class="text-lg font-semibold" />
+						<p class="max-w-3xl text-base text-ink-muted">
+							<span class="font-semibold text-ink">Why: </span>
+							{q.why}
+						</p>
+						<button type="button" data-next class="btn mt-1">
+							Next
+						</button>
+					</div>
+				</div>
+			</template>
+		))
+	}
+</Layout>
+
+<script>
+	import '../../scripts/game';
+</script>

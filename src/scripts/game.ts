@@ -233,10 +233,6 @@ $('[data-back]').addEventListener('click', () => {
 	renderStart();
 	show('start');
 });
-$('[data-home]').addEventListener('click', () => {
-	renderStart();
-	show('start');
-});
 $('[data-reset]').addEventListener('click', () => {
 	if (!confirm('Clear your progress and start fresh?')) return;
 	results = {};

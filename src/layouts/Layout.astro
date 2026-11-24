@@ -1,14 +1,25 @@
 ---
-// The page shell: one page, light theme, the portfolio's tokens and type.
+// The page shell for every page: header with the three sections (Prep,
+// Practice, Example), the footer, and the portfolio's tokens and type.
 import '../styles/global.css';
+import '../styles/app.css';
+import Container from '../components/Container.astro';
+import Icon from '../components/Icon.astro';
 
 interface Props {
 	title: string;
 	description: string;
+	page: 'prep' | 'practice' | 'example';
 }
 
-const { title, description } = Astro.props;
+const { title, description, page } = Astro.props;
 const base = import.meta.env.BASE_URL;
+const site = 'https://tavorbenshahar.com/';
+const links = [
+	{ id: 'prep', label: 'Prep', href: base },
+	{ id: 'practice', label: 'Practice', href: `${base}practice/` },
+	{ id: 'example', label: 'Example', href: `${base}example/` },
+];
 ---
 
 <!doctype html>
@@ -26,13 +37,52 @@ const base = import.meta.env.BASE_URL;
 		<link rel="icon" type="image/png" sizes="32x32" href={`${base}favicon.png`} />
 	</head>
 	<body data-ui>
+		<header class="site-header border-b border-ink-rule">
+			<Container class="flex flex-wrap items-center justify-between gap-gutter py-gutter">
+				<a href={base} class="flex items-center gap-tight text-ink no-underline">
+					<Icon name="circle" size="md" tone="mark" />
+					<span class="font-display text-lg tracking-display">Prepped</span>
+				</a>
+				<nav aria-label="Main" class="flex items-center gap-tight">
+					{
+						links.map((l) => (
+							<a href={l.href} class="pill" aria-current={l.id === page ? 'page' : undefined}>
+								{l.label}
+							</a>
+						))
+					}
+				</nav>
+			</Container>
+		</header>
+
 		<slot />
+
+		<footer class="site-footer border-t border-ink-rule">
+			<Container class="flex flex-wrap items-center justify-between gap-gutter py-gutter text-sm text-ink-muted">
+				<p>Prepped · interview prep for one specific role</p>
+				<p>
+					Made by <a href={site} class="link">Tavor Ben-Shahar</a>. PMP is a mark of the Project Management Institute; Prepped isn’t
+					affiliated with it.
+				</p>
+			</Container>
+		</footer>
 	</body>
 </html>
 
 <style is:global>
 	/* Preflight is off, so buttons don't inherit the page font on their own. */
-	button {
+	button,
+	input,
+	select,
+	textarea {
 		font-family: inherit;
+	}
+	.pill[aria-current='page'] {
+		border-color: var(--color-ink);
+		background: var(--color-ink);
+		color: var(--color-paper);
+	}
+	a.pill {
+		text-decoration: none;
 	}
 </style>

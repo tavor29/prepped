@@ -1,330 +1,134 @@
 ---
-// Your Call: the whole app is this page. Three screens toggled by
-// scripts/game.ts: start (pick a domain, see progress), a round of up to ten
-// questions (easy to hard), and the round's score. Every question is
-// pre-rendered in a <template>, cartoon included, and cloned in when drawn.
+// Prep: paste a job post, add the company and your résumé, and get a prep for
+// that one interview (scripts/prep.ts sends it to /api/prep). The result
+// replaces the form on this page; the last three stay in this browser.
 import Layout from '../layouts/Layout.astro';
 import Container from '../components/Container.astro';
 import Label from '../components/Label.astro';
 import Icon from '../components/Icon.astro';
-import Scene from '../components/Scene.astro';
-import { questions, domains } from '../data/questions';
+import { LIMITS } from '../lib/prep';
 
-const letters = ['A', 'B', 'C', 'D'];
-const site = 'https://tavorbenshahar.com/';
-const booking = 'https://calendar.app.google/7pWQKCqEaaHwPvpG9';
-const marks = { People: 'half', Process: 'quarter', 'Business environment': 'leaf' } as const;
-const total = questions.length;
-const perDomain = domains.map((d) => ({ name: d, mark: marks[d], count: questions.filter((q) => q.domain === d).length }));
+const base = import.meta.env.BASE_URL;
+const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
+const sections = [
+	['half', 'What they’re really hiring for', 'Must-haves, the priorities between the lines, and the likely interview loop.'],
+	['quarter', 'Your fit, line by line', 'Each requirement matched to your résumé, with the gaps and how to answer them.'],
+	['circle', 'Questions and answers', 'The 12–15 questions you’re likely to get, with an answer outline built from your own experience.'],
+	['leaf', 'Practice', 'Your pitch, your story bank, questions to ask them, and five situations to test your judgment.'],
+] as const;
 ---
 
 <Layout
-	title="Your Call: a project management judgment game"
-	description={`${total} project management situations from tech companies and startups, in the style of the PMP exam. Ten a round, easy to hard, with the best answer and why.`}
+	page="prep"
+	title="Prepped: interview prep for the role you actually applied to"
+	description="Paste the job post, add your résumé, and get a prep for that one interview: what they're hiring for, your fit, likely questions with answer outlines, and practice."
 >
-	<header class="border-b border-ink-rule">
-		<Container class="flex items-center justify-between gap-gutter py-gutter">
-			<button type="button" data-home class="flex cursor-pointer items-center gap-tight border-0 bg-transparent p-0 text-ink">
-				<Icon name="circle" size="md" tone="mark" />
-				<span class="font-display text-lg tracking-display">Your Call</span>
-			</button>
-			<a href={site} class="text-sm text-ink-muted hover:text-ink">by Tavor Ben-Shahar</a>
-		</Container>
-	</header>
-
 	<main>
 		<Container class="py-stack md:py-title">
-			{/* ---------- Start ---------- */}
-			<section data-screen="start" class="flex flex-col gap-title">
+			<div data-form-view class="flex flex-col gap-title">
 				<div class="flex flex-col gap-gutter">
-					<Label class="text-ink-muted">A project management judgment game</Label>
-					<h1 class="font-display text-3xl leading-display tracking-display">Your call.</h1>
+					<Label class="text-ink-muted">Interview prep</Label>
+					<h1 class="font-display text-3xl leading-display tracking-display">Prep for the interview you actually have.</h1>
 					<p class="max-w-2xl text-lg text-ink-muted">
-						{total} real-world situations from tech companies and startups, written in the style of the PMP exam. Ten a round, from easy
-						to hard. Pick what you’d do, then see the best answer and why.
+						Paste the job post and add the résumé you sent. You get a prep for that one role: what they’re really looking for, how you
+						fit, the questions you’re likely to get, and answers built from your own experience.
 					</p>
+					<p><a href={`${base}example/`} class="link">See an example first</a></p>
 				</div>
 
-				<div class="flex flex-col gap-gutter">
-					<p id="domain-label" class="font-label text-xs uppercase tracking-label text-ink-muted">Play from</p>
-					<div role="group" aria-labelledby="domain-label" class="flex flex-wrap gap-tight">
-						<button type="button" data-domain="all" aria-pressed="true" class="pill">All {total}</button>
-						{
-							perDomain.map((d) => (
-								<button type="button" data-domain={d.name} aria-pressed="false" class="pill">
-									<Icon name={d.mark} size="sm" tone="mark" />
-									{d.name}
-								</button>
-							))
-						}
-					</div>
-					<div class="flex flex-wrap items-center gap-gutter pt-tight">
-						<button type="button" data-start class="btn">Start a round</button>
-						<p data-start-note class="m-0 text-sm text-ink-muted"></p>
-					</div>
-				</div>
+				<div class="grid gap-title md:grid-cols-[3fr_2fr]">
+					<form data-form novalidate class="flex flex-col gap-stack">
+						<div class="grid gap-gutter md:grid-cols-2">
+							<label class="field">
+								<span class="font-semibold">Company</span>
+								<input name="company" required maxlength={LIMITS.company} autocomplete="organization" placeholder="e.g. Acme" />
+							</label>
+							<label class="field">
+								<span class="font-semibold">Interview stage</span>
+								<select name="stage">
+									<option value="unknown">Not sure yet</option>
+									<option value="recruiter">Recruiter screen</option>
+									<option value="hiring-manager">Hiring manager</option>
+									<option value="panel">Panel or final round</option>
+								</select>
+							</label>
+						</div>
 
-				<div class="flex flex-col gap-gutter">
-					<div class="flex flex-wrap items-baseline justify-between gap-gutter">
-						<Label class="text-ink-muted">Your progress</Label>
-						<button type="button" data-reset class="link text-sm" hidden>Reset progress</button>
-					</div>
-					<ul class="grid gap-gutter md:grid-cols-3">
-						{
-							perDomain.map((d) => (
-								<li data-progress={d.name} class="flex flex-col gap-tight rounded-md border border-ink-rule p-gutter">
-									<p class="flex items-center gap-tight font-semibold">
-										<Icon name={d.mark} size="sm" tone="mark" />
-										{d.name}
-									</p>
-									<div class="bar" aria-hidden="true">
-										<span data-bar style={`--mark: var(--mark-${d.mark})`} />
-									</div>
-									<p data-progress-text class="text-sm text-ink-muted">
-										0 of {d.count} played
-									</p>
-								</li>
-							))
-						}
-					</ul>
-					<p class="max-w-3xl text-sm text-ink-muted">
-						The questions are original, not taken from the exam. The mix follows the 2026 PMP exam outline: People 33%, Process 41%,
-						Business environment 26%. Your progress stays in this browser only.
-					</p>
-				</div>
-			</section>
+						<label class="field">
+							<span class="font-semibold">Job description</span>
+							<textarea name="jobDescription" required maxlength={LIMITS.jobDescription} placeholder="Paste the whole job post."></textarea>
+							<span class="field-hint" data-count="jobDescription">0 / {LIMITS.jobDescription.toLocaleString()}</span>
+						</label>
 
-			{/* ---------- A round ---------- */}
-			<section data-screen="round" hidden class="flex flex-col gap-gutter">
-				<div class="flex items-center gap-gutter">
-					<div class="bar grow" aria-hidden="true"><span data-round-bar style="--mark: var(--color-ink)"></span></div>
-					<Label data-round-count class="shrink-0 text-ink-muted" />
-				</div>
-				<div data-stage class="rounded-md border border-ink-rule p-gutter md:p-stack"></div>
-			</section>
+						<div class="field">
+							<span class="font-semibold" id="resume-label">Your résumé</span>
+							<div class="drop" data-drop>
+								<button type="button" data-pick class="btn">Upload PDF</button>
+								<span class="field-hint" data-file-status>Or paste the text below. The PDF is read in your browser.</span>
+								<input type="file" accept="application/pdf,.pdf" data-file hidden />
+							</div>
+							<textarea
+								name="resume"
+								required
+								maxlength={LIMITS.resume}
+								aria-labelledby="resume-label"
+								placeholder="Your résumé text appears here after upload. Check it, or paste it yourself."></textarea>
+							<span class="field-hint" data-count="resume">0 / {LIMITS.resume.toLocaleString()}</span>
+						</div>
 
-			{/* ---------- Round score ---------- */}
-			<section data-screen="end" hidden class="flex flex-col gap-stack">
-				<div class="flex flex-col gap-tight">
-					<Label class="text-ink-muted">Round score</Label>
-					<h2 tabindex="-1" class="font-display text-3xl leading-display tracking-display outline-none">
-						<span data-score></span> of <span data-total></span>
-					</h2>
-					<p data-end-line class="max-w-2xl text-lg text-ink-muted"></p>
-				</div>
-				<ol data-review class="flex flex-col"></ol>
-				<div class="flex flex-wrap items-center gap-gutter">
-					<button type="button" data-next-round class="btn">Next round</button>
-					<button type="button" data-back class="link text-sm">Back to start</button>
-				</div>
-				<aside class="flex flex-col gap-tight rounded-md bg-wash-half p-gutter md:flex-row md:items-center md:justify-between md:p-stack">
-					<div class="flex flex-col gap-tight">
-						<p class="font-display text-xl leading-title tracking-display">Made by a PM who makes these calls for real.</p>
-						<p class="text-base text-ink-muted">
-							I’m Tavor Ben-Shahar, a program and project manager. If your project needs someone to make them, let’s talk.
+						{siteKey && <div class="cf-turnstile" data-sitekey={siteKey} data-theme="light" />}
+
+						<p data-error class="form-error" hidden role="alert"></p>
+						<div class="flex flex-wrap items-center gap-gutter">
+							<button type="submit" data-submit class="btn">Build my prep</button>
+							<p data-progress class="text-sm text-ink-muted" aria-live="polite"></p>
+						</div>
+						<p class="max-w-2xl text-sm text-ink-muted">
+							Your job post and résumé are sent to an AI model to write the prep. Prepped doesn’t store or log them. The prep itself is
+							kept only in this browser, so you can open it again later. Up to 3 preps a day.
 						</p>
-					</div>
-					<div class="flex shrink-0 flex-wrap items-center gap-gutter">
-						<a href={booking} target="_blank" rel="noopener" class="btn">Book a 20-min call</a>
-						<a href={site} class="link text-sm">See my work</a>
-					</div>
-				</aside>
-			</section>
+					</form>
 
-			<noscript>
-				<p class="mt-gutter text-sm text-ink-muted">Turn on JavaScript to play.</p>
-			</noscript>
+					<aside class="flex flex-col gap-stack">
+						<div class="flex flex-col gap-gutter">
+							<Label class="text-ink-muted">What you get</Label>
+							<ul class="flex flex-col gap-gutter">
+								{
+									sections.map(([shape, title, text]) => (
+										<li class="flex gap-gutter">
+											<Icon name={shape} size="md" tone="mark" class="mt-1 shrink-0" />
+											<div class="flex flex-col gap-1">
+												<p class="font-semibold">{title}</p>
+												<p class="text-sm text-ink-muted">{text}</p>
+											</div>
+										</li>
+									))
+								}
+							</ul>
+						</div>
+						<div data-recent-wrap hidden class="flex flex-col gap-gutter">
+							<Label class="text-ink-muted">Your recent preps</Label>
+							<ul data-recent class="flex flex-col"></ul>
+						</div>
+						<div class="flex flex-col gap-tight rounded-md bg-wash-half p-gutter">
+							<p class="font-semibold">Interviewing for a PM role?</p>
+							<p class="text-sm text-ink-muted">Test your judgment on 50 real-world project management situations.</p>
+							<p><a href={`${base}practice/`} class="link text-sm">Play Your Call</a></p>
+						</div>
+					</aside>
+				</div>
+			</div>
+
+			<div data-result-view hidden class="flex flex-col gap-stack">
+				<p data-hide-print><button type="button" data-new class="link text-sm">← Start a new prep</button></p>
+				<div data-result></div>
+			</div>
 		</Container>
 	</main>
-
-	{/* Every question, ready to clone into the stage. */}
-	{
-		questions.map((q) => (
-			<template data-q={q.id} data-domain={q.domain} data-level={q.level} data-topic={q.topic} data-answer={q.answer}>
-				<div class="flex flex-col gap-gutter">
-					<div class="grid items-center gap-gutter md:grid-cols-2 md:gap-stack">
-						<div class="order-2 flex flex-col gap-gutter md:order-1">
-							<Label class="flex items-center gap-tight text-ink-muted">
-								<Icon name={marks[q.domain]} size="sm" tone="mark" />
-								{q.domain} · {q.topic} · {q.level}
-							</Label>
-							<h2 tabindex="-1" class="font-display text-xl leading-title tracking-display outline-none">
-								{q.situation}
-							</h2>
-						</div>
-						<Scene id={q.id} alt={q.alt} class="order-1 block aspect-[16/9] h-auto w-full rounded-sm md:order-2" />
-					</div>
-					<ul class="grid gap-tight md:grid-cols-2">
-						{q.options.map((o, j) => (
-							<li>
-								<button type="button" data-option={j} class="option">
-									<Label class="shrink-0 pt-1 text-ink-muted">{letters[j]}</Label>
-									<span class="grow">{o}</span>
-									<span data-mark="right" hidden class="shrink-0 pt-1">
-										<Icon name="leaf" size="sm" tone="mark" />
-									</span>
-									<span data-mark="wrong" hidden class="shrink-0 pt-1">
-										<Icon name="quarter" size="sm" tone="mark" />
-									</span>
-								</button>
-							</li>
-						))}
-					</ul>
-					<div data-feedback hidden tabindex="-1" aria-live="polite" class="flex flex-col items-start gap-tight outline-none">
-						<p data-verdict class="text-lg font-semibold" />
-						<p class="max-w-3xl text-base text-ink-muted">
-							<span class="font-semibold text-ink">Why: </span>
-							{q.why}
-						</p>
-						<button type="button" data-next class="btn mt-1">
-							Next
-						</button>
-					</div>
-				</div>
-			</template>
-		))
-	}
-
-	<footer class="border-t border-ink-rule">
-		<Container class="flex flex-wrap items-center justify-between gap-gutter py-gutter text-sm text-ink-muted">
-			<p>Your Call · {total} PMP-style situations</p>
-			<p>
-				Made by <a href={site} class="link">Tavor Ben-Shahar</a>. PMP is a mark of the Project Management Institute; this game isn’t
-				affiliated with it.
-			</p>
-		</Container>
-	</footer>
 </Layout>
 
-<script>
-	import '../scripts/game';
-</script>
+{siteKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />}
 
-<style is:global>
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		cursor: pointer;
-		border: 0;
-		border-radius: var(--radius-sm);
-		background: var(--color-ink);
-		color: var(--color-paper);
-		padding: var(--space-tight) var(--space-gutter);
-		font-family: var(--font-label);
-		font-weight: var(--weight-label);
-		font-size: var(--text-xs);
-		letter-spacing: var(--tracking-label);
-		text-transform: uppercase;
-		text-decoration: none;
-	}
-	.link {
-		cursor: pointer;
-		border: 0;
-		background: transparent;
-		padding: 0;
-		color: var(--color-ink);
-		font-weight: 600;
-		text-decoration: underline;
-		text-underline-offset: 4px;
-	}
-	.link:hover {
-		text-decoration: none;
-	}
-	.pill {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-tight);
-		cursor: pointer;
-		border: 1px solid var(--color-ink-rule);
-		border-radius: var(--radius-full);
-		background: transparent;
-		color: var(--color-ink);
-		padding: var(--space-tight) var(--space-gutter);
-		font-size: var(--text-sm);
-		font-weight: 600;
-		transition: border-color var(--dur-fast) var(--ease-out);
-	}
-	.pill:hover {
-		border-color: var(--color-ink);
-	}
-	.pill[aria-pressed='true'] {
-		border-color: var(--color-ink);
-		background: var(--color-ink);
-		color: var(--color-paper);
-	}
-	.bar {
-		height: 6px;
-		border-radius: var(--radius-full);
-		background: var(--color-ink-rule);
-		overflow: hidden;
-	}
-	.bar > span {
-		display: block;
-		height: 100%;
-		width: 0;
-		border-radius: inherit;
-		background: var(--mark);
-		transition: width var(--dur-fast) var(--ease-out);
-	}
-	.option {
-		display: flex;
-		height: 100%;
-		width: 100%;
-		align-items: flex-start;
-		gap: var(--space-tight);
-		cursor: pointer;
-		border: 1px solid var(--color-ink-rule);
-		border-radius: var(--radius-sm);
-		background: var(--mark-half-wash);
-		padding: var(--space-gutter);
-		text-align: left;
-		font-size: var(--text-base);
-		color: var(--color-ink);
-		transition: border-color var(--dur-fast) var(--ease-out);
-	}
-	.option:hover:not(:disabled) {
-		border-color: var(--color-ink);
-	}
-	.option:disabled {
-		cursor: default;
-	}
-	.option[data-state='right'] {
-		border-color: var(--mark-leaf);
-	}
-	.option[data-state='wrong'] {
-		border-color: var(--mark-quarter);
-	}
-	.option[data-state='dim'] {
-		opacity: 0.5;
-	}
-	[data-verdict][data-correct='true'] {
-		color: var(--mark-leaf-text);
-	}
-	[data-verdict][data-correct='false'] {
-		color: var(--mark-quarter-text);
-	}
-	.review-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-tight);
-		border-top: 1px solid var(--color-ink-rule);
-		padding: var(--space-tight) 0;
-	}
-	.review-row:last-child {
-		border-bottom: 1px solid var(--color-ink-rule);
-	}
-	.review-row > span:nth-child(2) {
-		flex-grow: 1;
-	}
-	.review-result {
-		font-size: var(--text-sm);
-		color: var(--color-ink-muted);
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.bar > span,
-		.pill,
-		.option {
-			transition: none;
-		}
-	}
-</style>
+<script>
+	import '../scripts/prep';
+</script>
