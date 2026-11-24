@@ -1,0 +1,145 @@
+/*
+ * Design tokens, single source of truth for every page. See docs/DESIGN.md.
+ * tailwind.config.ts maps utilities onto these variables; components never
+ * hard-code a size, color, duration or easing.
+ *
+ * The block at the bottom ("Legacy aliases") keeps the older token names the
+ * case studies, project pages, blog and charts were written against, pointed
+ * at the current system, so those pages follow the redesign without edits.
+ */
+:root {
+	/* Type families: system faces only, no webfont request. */
+	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	--font-display: var(--font-sans);
+	--font-ui: var(--font-sans);
+	--font-label: var(--font-sans);
+
+	/* Weights per role */
+	--weight-display: 700;
+	--weight-label: 600;
+	--weight-serif: 400;
+
+	/* Type scale, 7 steps. The top three scale between 390px and 1440px viewports. */
+	--text-xs: 12px;
+	--text-sm: 14px;
+	--text-base: 16px;
+	--text-lg: 20px;
+	--text-xl: clamp(22px, 19.77px + 0.571vw, 28px);
+	--text-2xl: clamp(32px, 27.54px + 1.143vw, 44px);
+	--text-3xl: clamp(40px, 28.11px + 3.048vw, 72px);
+
+	/* Line-height and tracking */
+	--leading-display: 1.04;
+	--leading-title: 1.15;
+	--leading-text: 1.5;
+	--leading-prose: 1.6;
+	--tracking-display: -0.03em;
+	--tracking-serif: -0.01em;
+	--tracking-text: -0.011em;
+	--tracking-label: 0.06em;
+
+	/* Color: ink on paper, one accent, alpha steps of ink */
+	--color-ink: #0a0a0a;
+	--color-paper: #fafafa;
+	--color-accent: #e5484d;
+	--color-ink-muted: rgb(10 10 10 / 0.6);
+	--color-ink-rule: rgb(10 10 10 / 0.12);
+	--color-ink-ghost: rgb(10 10 10 / 0.1);
+	--color-ink-wash: rgb(10 10 10 / 0.04);
+	--color-paper-muted: rgb(250 250 250 / 0.6);
+	--color-paper-rule: rgb(250 250 250 / 0.14);
+	/* Links, selected states and primary buttons on the long-read pages. Ink,
+	   so red stays reserved for small marks. */
+	--color-link: var(--color-ink);
+	--color-link-contrast: var(--color-paper);
+
+	/* Spacing (4px base) */
+	--space-dot: 4px;
+	--space-tight: 10px;
+	--space-gutter: 16px;
+	--space-stack: 40px;
+	--space-title: 60px;
+	--space-section: 120px;
+	--container: 1180px;
+
+	/* Radius */
+	--radius-sm: 8px;
+	--radius-md: 20px;
+	--radius-full: 9999px;
+
+	/* Icons (components/Icon.astro) */
+	--icon-stroke: 1.5px;
+	--icon-stroke-mark: 3px; /* outline shape marks, matching the original site's 3px outline */
+	--icon-sm: 12px;
+	--icon-md: 24px;
+	--icon-lg: 44px;
+	--icon-xl: 64px;
+	--icon-2xl: 120px;
+	--icon-3xl: 200px;
+
+
+	/* Motion */
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--dur-fast: 400ms;
+	--dur-base: 600ms;
+	--dur-slow: 800ms;
+
+	/* Chart colors (Block 5), dataviz skill's validated default palette,
+	   slots 1-2 for categorical series, fixed status colors for state.
+	   Re-validate with scripts/validate_palette.js before adding more slots. */
+	--chart-series-1: #2a78d6;
+	--chart-series-2: #eb6834;
+	--chart-ordinal-1: #86b6ef;
+	--chart-ordinal-2: #2a78d6;
+	--chart-ordinal-3: #104281;
+	--chart-status-good: #0ca30c;
+	--chart-status-warning: #fab219;
+	--chart-status-serious: #ec835a;
+	--chart-status-critical: #d03b3b;
+
+	/* Shape marks keep the original site's colours, one per shape wherever it
+	   appears (work rows, index pages, footer contact links). */
+	--mark-half: var(--chart-series-1);
+	--mark-quarter: var(--chart-series-2);
+	--mark-circle: var(--chart-status-warning);
+	--mark-leaf: var(--chart-status-good);
+	/* A light wash of the half-disc blue: the homepage Projects card background. */
+	--mark-half-wash: color-mix(in srgb, var(--mark-half) 14%, var(--color-paper));
+	/* Text versions of the orange and green marks, darkened just enough for small
+	   text on paper (about 5:1): the "Problem" and "What changed" labels in the
+	   More work rows (Tavor's call, 2026-11-09). */
+	--mark-quarter-text: color-mix(in srgb, var(--mark-quarter) 75%, var(--color-ink));
+	--mark-leaf-text: color-mix(in srgb, var(--mark-leaf) 75%, var(--color-ink));
+
+	/* Quiz illustrations (components/quiz/Scene.astro), flat cartoon style
+	   (Tavor's call, 2026-11-20). Only used inside those drawings; everything
+	   else in them reuses the marks, ink, paper and accent. */
+	--illo-bg: #66d9ab;
+	--illo-bg-deep: #52c99a;
+	--illo-floor: #44b98b;
+	--illo-skin: #f7c4a5;
+	--illo-skin-deep: #c98a62;
+	--illo-hair-red: #f26b6b;
+	--illo-hair-brown: #7b4a2b;
+	--illo-purple: #4f3c8f;
+	--illo-navy: #24304f;
+
+	/* Legacy aliases (pre-redesign names used by inner pages and charts). */
+	--color-bg: var(--color-paper);
+	--color-bg-subtle: var(--color-ink-wash);
+	--color-text: var(--color-ink);
+	--color-text-muted: var(--color-ink-muted);
+	--color-border: var(--color-ink-rule);
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 1rem;
+	--space-4: 1.5rem;
+	--space-5: 2.5rem;
+	--space-6: 4rem;
+	--max-width: 72rem;
+	--page-width: 110rem;
+	--gutter: clamp(1rem, 3vw, 3rem);
+	--radius: var(--radius-sm);
+}

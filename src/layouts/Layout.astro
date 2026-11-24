@@ -1,0 +1,38 @@
+---
+// The page shell: one page, light theme, the portfolio's tokens and type.
+import '../styles/global.css';
+
+interface Props {
+	title: string;
+	description: string;
+}
+
+const { title, description } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:type" content="website" />
+		<meta name="twitter:card" content="summary" />
+		<link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+		<link rel="icon" type="image/png" sizes="32x32" href={`${base}favicon.png`} />
+	</head>
+	<body data-ui>
+		<slot />
+	</body>
+</html>
+
+<style is:global>
+	/* Preflight is off, so buttons don't inherit the page font on their own. */
+	button {
+		font-family: inherit;
+	}
+</style>
