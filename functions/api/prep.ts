@@ -82,11 +82,13 @@ export const onRequestPost = async ({ request, env }: Ctx) => {
 	const company = String(body.company ?? '').trim();
 	const jobDescription = String(body.jobDescription ?? '').trim();
 	const resume = String(body.resume ?? '').trim();
+	const extra = String(body.extra ?? '').trim();
 	const stage: Stage = STAGES.includes(body.stage) ? body.stage : 'unknown';
 	if (!company || !jobDescription || !resume) return fail(400, 'Add the company, the job description and your résumé.');
 	if (company.length > LIMITS.company) return fail(400, 'The company name is too long.');
 	if (jobDescription.length > LIMITS.jobDescription) return fail(400, `The job description is over ${LIMITS.jobDescription.toLocaleString()} characters.`);
 	if (resume.length > LIMITS.resume) return fail(400, `The résumé is over ${LIMITS.resume.toLocaleString()} characters.`);
+	if (extra.length > LIMITS.extra) return fail(400, `The extra material is over ${LIMITS.extra.toLocaleString()} characters.`);
 	if (jobDescription.length < 200) return fail(400, 'The job description looks too short. Paste the whole post.');
 	if (resume.length < 300) return fail(400, 'The résumé looks too short. If it’s a scanned PDF, paste the text instead.');
 
@@ -101,7 +103,7 @@ export const onRequestPost = async ({ request, env }: Ctx) => {
 	const limited = await overLimit(env, ip);
 	if (limited) return fail(429, limited);
 
-	const req: PrepRequest = { company, jobDescription, resume, stage };
+	const req: PrepRequest = { company, jobDescription, resume, extra: extra || undefined, stage };
 	let reply: Response;
 	try {
 		reply = await fetch(env.MAKE_WEBHOOK_URL, {

@@ -45,11 +45,13 @@ export type PrepRequest = {
 	company: string;
 	jobDescription: string;
 	resume: string;
+	/** Optional: project write-ups, a longer work history, notes. */
+	extra?: string;
 	stage: Stage;
 	turnstileToken?: string;
 };
 
-export const LIMITS = { company: 120, jobDescription: 15000, resume: 20000 };
+export const LIMITS = { company: 120, jobDescription: 15000, resume: 20000, extra: 30000 };
 
 const str = (v: unknown) => typeof v === 'string';
 const strs = (v: unknown) => Array.isArray(v) && v.every(str);

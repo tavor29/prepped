@@ -76,6 +76,25 @@ const sections = [
 							<span class="field-hint" data-count="resume">0 / {LIMITS.resume.toLocaleString()}</span>
 						</div>
 
+						<div class="field">
+							<span class="font-semibold" id="extra-label">More about you <span class="font-normal text-ink-muted">(optional)</span></span>
+							<p class="field-hint">
+								Project write-ups, a longer version of your experience, notes on what you did: anything that helps tailor the answers. The
+								interviewer only sees your résumé, so the prep flags stories that come from here.
+							</p>
+							<div class="drop" data-drop-extra>
+								<button type="button" data-pick-extra class="btn">Add files</button>
+								<span class="field-hint" data-extra-status>PDF, TXT or MD, as many as you like. Read in your browser.</span>
+								<input type="file" accept="application/pdf,.pdf,.txt,.md,text/plain,text/markdown" multiple data-extra-file hidden />
+							</div>
+							<textarea
+								name="extra"
+								maxlength={LIMITS.extra}
+								aria-labelledby="extra-label"
+								placeholder="Added files appear here. You can also paste or type."></textarea>
+							<span class="field-hint" data-count="extra">0 / {LIMITS.extra.toLocaleString()}</span>
+						</div>
+
 						{siteKey && <div class="cf-turnstile" data-sitekey={siteKey} data-theme="light" />}
 
 						<p data-error class="form-error" hidden role="alert"></p>
@@ -84,7 +103,7 @@ const sections = [
 							<p data-progress class="text-sm text-ink-muted" aria-live="polite"></p>
 						</div>
 						<p class="max-w-2xl text-sm text-ink-muted">
-							Your job post and résumé are sent to an AI model to write the prep. Prepped doesn’t store or log them. The prep itself is
+							Your job post, résumé and anything you add are sent to an AI model to write the prep. Prepped doesn’t store or log them. The prep itself is
 							kept only in this browser, so you can open it again later. Up to 3 preps a day.
 						</p>
 					</form>

@@ -22,6 +22,10 @@ const fileInput = $<HTMLInputElement>('[data-file]');
 const fileStatus = $('[data-file-status]');
 const drop = $('[data-drop]');
 const resumeBox = form.elements.namedItem('resume') as HTMLTextAreaElement;
+const extraBox = form.elements.namedItem('extra') as HTMLTextAreaElement;
+const extraInput = $<HTMLInputElement>('[data-extra-file]');
+const extraStatus = $('[data-extra-status]');
+const extraDrop = $('[data-drop-extra]');
 
 // ---------- Saved preps ----------
 
@@ -90,7 +94,7 @@ $('[data-new]').addEventListener('click', () => {
 
 // ---------- Character counts ----------
 
-(['jobDescription', 'resume'] as const).forEach((name) => {
+(['jobDescription', 'resume', 'extra'] as const).forEach((name) => {
 	const box = form.elements.namedItem(name) as HTMLTextAreaElement;
 	const count = $(`[data-count="${name}"]`);
 	const update = () => (count.textContent = `${box.value.length.toLocaleString()} / ${LIMITS[name].toLocaleString()}`);
@@ -157,6 +161,61 @@ drop.addEventListener('drop', (e) => {
 	takeFile(e.dataTransfer?.files?.[0]);
 });
 
+// ---------- Extra material ----------
+
+const isPdf = (f: File) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+const isText = (f: File) => /\.(txt|md|markdown)$/i.test(f.name) || f.type.startsWith('text/');
+
+async function takeExtra(files: FileList | File[] | undefined | null) {
+	const list = [...(files ?? [])];
+	if (!list.length) return;
+	const added: string[] = [];
+	const skipped: string[] = [];
+	for (const file of list) {
+		if (file.size > 2 * 1024 * 1024 || (!isPdf(file) && !isText(file))) {
+			skipped.push(file.name);
+			continue;
+		}
+		extraStatus.textContent = `Reading ${file.name}…`;
+		try {
+			const text = (isPdf(file) ? await readPdf(file) : await file.text()).trim();
+			if (!text) {
+				skipped.push(file.name);
+				continue;
+			}
+			const block = `--- ${file.name} ---\n${text}`;
+			extraBox.value = (extraBox.value.trim() ? `${extraBox.value.trim()}\n\n` : '') + block;
+			added.push(file.name);
+		} catch {
+			skipped.push(file.name);
+		}
+	}
+	const over = extraBox.value.length > LIMITS.extra;
+	if (over) extraBox.value = extraBox.value.slice(0, LIMITS.extra);
+	extraBox.dispatchEvent(new Event('input'));
+	const parts = [];
+	if (added.length) parts.push(`Added ${added.join(', ')}.`);
+	if (skipped.length) parts.push(`Couldn’t read ${skipped.join(', ')} (PDF, TXT or MD under 2 MB only).`);
+	if (over) parts.push(`Trimmed to ${LIMITS.extra.toLocaleString()} characters: cut what matters least.`);
+	extraStatus.textContent = parts.join(' ');
+}
+
+$('[data-pick-extra]').addEventListener('click', () => extraInput.click());
+extraInput.addEventListener('change', () => {
+	takeExtra(extraInput.files);
+	extraInput.value = '';
+});
+extraDrop.addEventListener('dragover', (e) => {
+	e.preventDefault();
+	extraDrop.dataset.over = '';
+});
+extraDrop.addEventListener('dragleave', () => delete extraDrop.dataset.over);
+extraDrop.addEventListener('drop', (e) => {
+	e.preventDefault();
+	delete extraDrop.dataset.over;
+	takeExtra(e.dataTransfer?.files);
+});
+
 // ---------- Sending ----------
 
 const STEPS = [
@@ -182,6 +241,7 @@ form.addEventListener('submit', async (e) => {
 	const company = String(data.get('company') ?? '').trim();
 	const jobDescription = String(data.get('jobDescription') ?? '').trim();
 	const resume = String(data.get('resume') ?? '').trim();
+	const extra = String(data.get('extra') ?? '').trim();
 	const stage = String(data.get('stage') ?? 'unknown') as Stage;
 	if (!company) return showError('Add the company name.');
 	if (jobDescription.length < 200) return showError('Paste the whole job description (it looks too short).');
@@ -201,7 +261,7 @@ form.addEventListener('submit', async (e) => {
 		const res = await fetch(`${import.meta.env.BASE_URL}api/prep`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ company, jobDescription, resume, stage, turnstileToken }),
+			body: JSON.stringify({ company, jobDescription, resume, extra: extra || undefined, stage, turnstileToken }),
 		});
 		const body = (await res.json().catch(() => ({}))) as { prep?: unknown; demo?: boolean; error?: string };
 		if (!res.ok || !isPrep(body.prep)) {

@@ -1,6 +1,6 @@
 # Prepped
 
-Interview prep for one specific role. You paste the job post, add the company and the résumé you sent, and get:
+Interview prep for one specific role. You paste the job post and add the company and the résumé you sent. Optionally, you can add more about yourself: project write-ups, a longer work history or notes. You get:
 
 - what they're really hiring for
 - your fit, requirement by requirement
